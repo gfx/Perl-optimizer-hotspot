@@ -257,7 +257,6 @@ hotspot_peep(pTHX_ PTR_TBL_t* const seen, OP* o){
         }
         ptr_table_store(seen, o, (void*)TRUE);
 
-
         /* apply this function recursively */
         switch(o->op_type){
         case OP_NEXTSTATE:
@@ -297,14 +296,15 @@ hotspot_peep(pTHX_ PTR_TBL_t* const seen, OP* o){
 }
 
 static OP*
-optimizer_pp_optimize(pTHX) {
+optimizer_pp_count(pTHX) {
     dVAR;
     OP* const o = PL_op;
+
     if(++o->op_private > HOTSPOT){
+        OP* const op_start = o->op_sibling;
         PTR_TBL_t* seen;
 
-        return NORMAL;
-        //warn("optimizing...");
+        assert(op_start->op_next == o);
 
         ENTER;
         SAVEVPTR(PL_curcop);
@@ -315,12 +315,9 @@ optimizer_pp_optimize(pTHX) {
 
         ptr_table_free(seen);
 
-        /* the sibling is actually the parent */
-        assert(o->op_sibling->op_next == o);
-
         /* free this opcode */
-        o->op_sibling->op_next = o->op_next;
-        PL_op = o->op_sibling;
+        op_start->op_next = o->op_next;
+        PL_op = op_start;
         op_free(o);
 
         LEAVE;
@@ -331,19 +328,23 @@ optimizer_pp_optimize(pTHX) {
 static void
 optimizer_peep(pTHX_ OP* const o) {
     dMY_CXT;
-    OP* optimizer;
+    OP* op_count;
+
+    assert(o->op_next->op_ppaddr != optimizer_pp_count);
 
     MY_CXT.orig_peepp(aTHX_ o);
 
-    optimizer = newOP(OP_CUSTOM, 0x00);
+    if(CvROOT(PL_compcv)){ // subroutines, rather than {map,grep,sort} blocks
+        op_count = newOP(OP_CUSTOM, 0x00);
+        op_count->op_ppaddr  = optimizer_pp_count;
+        op_count->op_private = 0;
 
-    optimizer->op_sibling = o; // for retrival
+        op_count->op_sibling = o; // for retrival
 
-    optimizer->op_next = o->op_next;
-    o->op_next         = optimizer;
-
-    optimizer->op_ppaddr  = optimizer_pp_optimize;
-    optimizer->op_private = 0;
+        /* insert op_count */
+        op_count->op_next = o->op_next;
+        o->op_next        = op_count;
+    }
 }
 
 
