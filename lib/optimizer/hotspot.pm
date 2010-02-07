@@ -22,7 +22,11 @@ This document describes optimizer::hotspot version 0.001.
 
 =head1 SYNOPSIS
 
-    use optimizer::hotspot;
+    use optimizer::hotspot; # does optimization as much as possible
+
+    use optimizer::hotspot 0xFFFF00; # default
+
+    use optimizer::hotspot 0xFFFF01; # trace optimization
 
 =head1 DESCRIPTION
 
