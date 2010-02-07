@@ -7,14 +7,12 @@ all_from 'lib/optimizer/hotspot.pm';
 use_ppport 3.19;
 cc_warnings;
 
-# requires ...
-
+test_requires 'Test::Requires' => 0.03;
 test_requires 'Test::More' => 0.88; # done_testing()
 
-tests 't/*.t', 't/*/*.t';
-author_tests 'xt';
+tests_recursive  't';
 
-#auto_set_repository() if -d '.git';
+auto_set_repository() if -d '.git';
 
 clean_files qw(
     optimizer-hotspot-* *.stackdump
