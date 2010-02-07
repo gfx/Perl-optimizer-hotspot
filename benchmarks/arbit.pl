@@ -3,9 +3,11 @@
 use strict;
 use Benchmark::Forking qw(cmpthese);
 
+use FindBin qw($Bin);
+
 use Config; printf "Perl/%vd on %s\n", $^V, $Config{archname};
 
-use FindBin qw($Bin);
+print "This is arbitrary test :)\n";
 
 cmpthese -3, {
     'plain' => sub{
@@ -15,6 +17,9 @@ cmpthese -3, {
         my $f = eval q{
             sub {
                 my($a, $b, $c, $d) = @_;
+                ($a, $b, $c, $d) = @_;
+                ($a, $b, $c, $d) = @_;
+
                 return $a + $b + $c + $d;
             }
         };
@@ -28,6 +33,9 @@ cmpthese -3, {
         my $f = eval q{
             sub {
                 my($a, $b, $c, $d) = @_;
+                ($a, $b, $c, $d) = @_;
+                ($a, $b, $c, $d) = @_;
+
                 return $a + $b + $c + $d;
             }
         };
