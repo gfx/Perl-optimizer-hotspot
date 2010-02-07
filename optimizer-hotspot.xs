@@ -114,6 +114,7 @@ pp_optimized_passign(pTHX) {
     OP* const lhs = rhs->op_sibling;
     GV* const gv  = cGVOPx_gv(cUNOPx(cUNOPx(rhs)->op_first->op_sibling)->op_first);
     AV* const av  = GvAVn(gv);
+    I32 const rmg = SvRMAGICAL(av);
     I32 const len = av_len(av) + 1;
     I32 i;
     OP* o;
@@ -123,38 +124,37 @@ pp_optimized_passign(pTHX) {
     o = cUNOPx(lhs)->op_first;
     i = 0;
 
-    if(SvRMAGICAL(av)){
-        for(o = o->op_sibling; o; o = o->op_sibling){
-            SV* const targ  = PAD_SVl(o->op_targ);
-            SV** const valp = av_fetch(av, i, FALSE);
+    for(o = o->op_sibling; o; o = o->op_sibling){
+        SV* const targ = PAD_SVl(o->op_targ);
 
-            if(o->op_private & OPpLVAL_INTRO){
-                SAVECLEARSV(PAD_SVl(o->op_targ));
-            }
-
-            sv_setsv(targ, valp ? *valp : &PL_sv_undef);
-            SvSETMAGIC(targ);
-            i++;
+        if(o->op_private & OPpLVAL_INTRO){
+            SAVECLEARSV(PAD_SVl(o->op_targ));
         }
-    }
-    else{
-        for(o = o->op_sibling; o; o = o->op_sibling){
-            SV* const targ = PAD_SVl(o->op_targ);
 
-            if(o->op_private & OPpLVAL_INTRO){
-                SAVECLEARSV(PAD_SVl(o->op_targ));
+        if(i < len){
+            if(SvTYPE(targ) == SVt_PVAV){
+                av_clear((AV*)targ);
+
+                for(; i < len; i++){
+                    SV** const valp = (rmg ? av_fetch(av, i, FALSE) : &(AvARRAY(av)[i]));
+                    av_push((AV*)targ, valp ? newSVsv(*valp) : newSV(0));
+                }
             }
-            if(i < len){
-                SV* const val = AvARRAY(av)[i];
-
-                sv_setsv(targ, val);
+            else{
+                SV** const valp = (rmg ? av_fetch(av, i, FALSE) : &(AvARRAY(av)[i]));
+                sv_setsv(targ, valp ? *valp : &PL_sv_undef);
+                i++;
+            }
+        }
+        else{ // clear targ
+            if(SvTYPE(targ) == SVt_PVAV){
+                av_clear((AV*)targ);
             }
             else{
                 sv_setsv(targ, &PL_sv_undef);
             }
-            SvSETMAGIC(targ);
-            i++;
         }
+        SvSETMAGIC(targ);
     }
     return NORMAL;
 }
@@ -184,7 +184,6 @@ optimizer_combine_opcode(pTHX_ OP* o){
     }
     case OP_AASSIGN:{
         OP* kid;
-        break;
         if(!((o->op_flags & OPf_WANT) == OPf_WANT_VOID)){
             return;
         }
@@ -223,7 +222,13 @@ optimizer_combine_opcode(pTHX_ OP* o){
             assert(kid->op_type == OP_PUSHMARK);
 
             for(kid = kid->op_sibling; kid; kid = kid->op_sibling){
-                if(!(kid->op_type == OP_PADSV && !(kid->op_private & (OPpPAD_STATE | OPpDEREF)))){
+                if(kid->op_private & (OPpPAD_STATE | OPpDEREF)){
+                    return;
+                }
+
+                if(!(  kid->op_type == OP_PADSV
+                    || kid->op_type == OP_PADAV
+                )){
                     return;
                 }
             }
@@ -233,10 +238,11 @@ optimizer_combine_opcode(pTHX_ OP* o){
             o->op_ppaddr = pp_optimized_passign;
 
             /* invalidate rhs's PUSHMARK */
+            // XXX: use op_null()
             cUNOPx(cUNOPo->op_first)->op_first->op_ppaddr = PL_ppaddr[OP_NULL];
             cUNOPx(cUNOPo->op_first)->op_first->op_next   = o;
 
-            warn("optimize!");
+           // warn("optimize!");
         }
         break;
     }
@@ -301,13 +307,15 @@ optimizer_pp_count(pTHX) {
     OP* const o = PL_op;
 
     if(++o->op_private > HOTSPOT){
+        COP* save_cop;
         OP* const op_start = o->op_sibling;
         PTR_TBL_t* seen;
 
         assert(op_start->op_next == o);
 
-        ENTER;
-        SAVEVPTR(PL_curcop);
+        //ENTER;
+        //SAVEVPTR(PL_curcop);
+        save_cop = PL_curcop;
 
         seen = ptr_table_new();
 
@@ -320,7 +328,8 @@ optimizer_pp_count(pTHX) {
         PL_op = op_start;
         op_free(o);
 
-        LEAVE;
+        //LEAVE;
+        PL_curcop = save_cop;
     }
     return NORMAL;
 }

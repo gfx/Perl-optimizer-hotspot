@@ -14,6 +14,9 @@ for(1 .. 100){
     is(Math::BigInt->new(42) + 1, 43);
     is(Math::BigInt->new(42) - 1, 41);
 
+    is(Math::BigInt->new(42) * 2, 84);
+    is(Math::BigInt->new(42) / 2, 21);
+
     like(Dumper([42]), qr/\b 42 \b/xms);
 }
 
