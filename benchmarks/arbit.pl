@@ -14,12 +14,12 @@ cmpthese -3, {
 
         my $f = eval q{
             sub {
-                my($a, $b, $c) = @_;
-                return $a + $b + $c;
+                my($a, $b, $c, $d) = @_;
+                return $a + $b + $c + $d;
             }
         };
 
-        $f->(1, 2, 3) for(1 .. 1000);
+        $f->(1, 2, 3, 4) for(1 .. 1000);
     },
     'optimized' => sub{
         require optimizer::hotspot;
@@ -27,12 +27,12 @@ cmpthese -3, {
 
         my $f = eval q{
             sub {
-                my($a, $b, $c) = @_;
-                return $a + $b + $c;
+                my($a, $b, $c, $d) = @_;
+                return $a + $b + $c + $d;
             }
         };
 
-        $f->(1, 2, 3) for(1 .. 1000);
+        $f->(1, 2, 3, 4) for(1 .. 1000);
     }
 };
 
