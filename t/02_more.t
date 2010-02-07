@@ -5,11 +5,11 @@ use optimizer::hotspot;
 
 use Test::More;
 
-use Math::BigInt;
+use Math::BigInt     ();
+use Data::Dumper   qw(Dumper);
+use File::Basename qw(basename);
 
-use Data::Dumper;
-
-for(1 .. 100){
+for(1 .. 0xFF){
     is(Math::BigInt->new(42),     42);
     is(Math::BigInt->new(42) + 1, 43);
     is(Math::BigInt->new(42) - 1, 41);
@@ -17,7 +17,9 @@ for(1 .. 100){
     is(Math::BigInt->new(42) * 2, 84);
     is(Math::BigInt->new(42) / 2, 21);
 
-    like(Dumper([42]), qr/\b 42 \b/xms);
+    like(Dumper({ foo => [42]}), qr/\b 42 \b/xms);
+
+    is(basename(__FILE__), '02_more.t');
 }
 
 done_testing;
